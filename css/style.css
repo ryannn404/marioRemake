@@ -710,3 +710,43 @@ body {
     opacity: 0;
     transition: opacity 2s linear;
 }
+.jump-duplo {
+    animation: jump-duplo-animation 800ms ease-out;
+}
+
+/* sem o 0%: o segundo pulo começa da altura em que o Mario está */
+@keyframes jump-duplo-animation {
+    35%  { bottom: 280px; }
+    55%  { bottom: 280px; }
+    100% { bottom: 0; }
+}   
+/* SKILL DO PIKACHU */
+.barra-cooldown {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 200px;
+    height: 14px;
+    background: #121524;
+    border: 2px solid #ffcc00;
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 20;
+}
+
+.barra-cooldown-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #fff3a0, #ffcc00);
+}
+
+.raio-skill {
+    display: none;
+    position: absolute;
+    top: 0;
+    width: 90px;
+    height: 100%;
+    object-fit: contain;
+    z-index: 15;
+    pointer-events: none;
+}

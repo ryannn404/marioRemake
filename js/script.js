@@ -29,15 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const item = document.getElementById('item-boss');
     const bossVidaDisplay = document.getElementById('boss-vida');
     
+    
     let proximoBoss = 100;       // pontuação em que o próximo boss aparece
     let ignorarColisaoAte = 0;   // se este "let" já existir mais abaixo no arquivo, apague um dos dois
 
     let bossMorrendo = false;
-    let proximoBossDificil = 0;
     let duracaoAtaque = 2;
     let pausaAtaque = 800;
     let pausaItem = 1500;
-
+    
     let bossAtivo = false;
     let bossVida = 3;
     let bossFeitos = 0;       // quantos bosses já foram derrotados
@@ -52,8 +52,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let imagemPersonagem = 'assets/Running-Pikachu-GIF.webp';
     let imagemMorte = 'assets/pikachuDerrotado.jpg';
     let imagemObstaculo = 'assets/pedra.png';
-
+    
     let personagemAtual = 'pikachu'; 
+    
+    
+
+    const btnPikachu = document.getElementById('btn-pikachu');
+    const btnMario = document.getElementById('btn-mario');
+
+    let pulosFeitos = 0;
+    let timerPulo = null;
+
+    const raio = document.getElementById('raio-skill');
+    const barraCooldown = document.getElementById('barra-cooldown');
+    const barraCooldownFill = document.getElementById('barra-cooldown-fill');
+
+    let ultimoRaio = 0;            // hora do último disparo
+    const cooldownRaio = 5000;     // 5 segundos
+    let obstaculoDestruido = false;
+
+
 
     const moeda = document.getElementById('moeda');
     const coinsDisplay = document.getElementById('coins-display');
@@ -89,6 +107,10 @@ function startGame() {
     proximaVelocidade = 2;
 
     resetElements();
+    ultimoRaio = 0; // raio começa pronto
+    barraCooldown.style.display = personagemAtual === 'pikachu' ? 'block' : 'none';
+    // se for o pikachu, tem barra, se for outro personagem, nao tem barra
+    
     resetBoss();
     bossFeitos = 0;
     proximoBoss = 100;
@@ -113,6 +135,12 @@ function startGame() {
 
 
     function resetElements() {
+        obstaculoDestruido = false;
+        obstaculo.style.visibility = 'visible';
+        personagem.classList.remove('jump-duplo');
+        clearTimeout(timerPulo);
+        pulosFeitos = 0;
+
         obstaculo.src = imagemObstaculo;
         obstaculo.style.animation = '';
         obstaculo.style.animationDuration = ''; 
@@ -131,22 +159,55 @@ function startGame() {
     }
 
     function jump() {
-        if (!isPlaying) return;
+    if (!isPlaying) return;
+
+    if (jumpTip) {
+        jumpTip.style.opacity = '0';
+    }
+
+    // Pikachu: um pulo só, igual era antes
+    if (personagemAtual !== 'mario') {
         if (personagem.classList.contains('jump')) return;
-
         personagem.classList.add('jump');
-
-        if (jumpTip) {
-            jumpTip.style.opacity = '0';
-        }
-
         setTimeout(() => {
             personagem.classList.remove('jump');
         }, 500);
+        return;
     }
+
+    // Mario: no máximo 2 pulos
+    if (pulosFeitos >= 2) return;
+    pulosFeitos += 1;
+
+    if (pulosFeitos === 1) {
+        personagem.classList.add('jump');
+        timerPulo = setTimeout(() => {
+            personagem.classList.remove('jump');
+            pulosFeitos = 0;
+        }, 500);
+    } else {
+        // segundo pulo: cancela o fim do primeiro e continua da altura atual
+        clearTimeout(timerPulo);
+        const alturaAtual = +window.getComputedStyle(personagem).bottom.replace('px', '');
+        personagem.style.bottom = `${alturaAtual}px`;
+        personagem.classList.remove('jump');
+        void personagem.offsetWidth;
+        personagem.classList.add('jump-duplo');
+        personagem.src = 'assets/saltoDuploMario.png';
+
+        timerPulo = setTimeout(() => {
+            if (!isPlaying) return; // morreu no meio do pulo: não mexe no sprite de morte
+            personagem.classList.remove('jump-duplo');
+            personagem.style.bottom = '0px';
+            personagem.src = imagemPersonagem; // volta pro sprite normal
+            pulosFeitos = 0;
+        }, 780);
+    }
+}
 
     function checkCollision() {
         if (!isPlaying) return;
+        atualizarBarraCooldown();
         if (bossAtivo) {
         checarItem();
         checarMoeda();
@@ -168,7 +229,7 @@ function startGame() {
         const pipePosition = obstaculo.offsetLeft;
         const marioPosition = +window.getComputedStyle(personagem).bottom.replace('px', '');
 
-        if (pipePosition <= 120 && pipePosition > 0 && marioPosition < 80) {
+        if (pipePosition <= 120 && pipePosition > 0 && marioPosition < 80 && !obstaculoDestruido) {
             triggerGameOver(pipePosition, marioPosition);
         }
         checarMoeda()
@@ -370,12 +431,20 @@ function startGame() {
                 jump();
             }
         }
+        if (e.code === 'KeyZ') {
+            if (isPlaying) {
+                e.preventDefault();
+                usarRaio();
+            }
+}
     });
 
     // SELECIONAR PERSONAGENS
 
 
     function selecionarPikachu() {
+        btnPikachu.classList.add('selecionado');
+        btnMario.classList.remove('selecionado');
         personagemAtual = 'pikachu';
         imagemPersonagem = 'assets/Running-Pikachu-GIF.webp';
         imagemMorte = 'assets/pikachuDerrotado.jpg';
@@ -383,11 +452,15 @@ function startGame() {
     }
 
     function selecionarMario() {
+        btnMario.classList.add('selecionado');
+        btnPikachu.classList.remove('selecionado');
         personagemAtual = 'mario';
         imagemPersonagem = 'assets/mario.gif';
         imagemMorte = 'assets/marioDerrotado.png';
         imagemObstaculo = 'assets/canoMario.png';
     }
+    btnPikachu.classList.add('selecionado');
+
     document.getElementById('btn-pikachu')
         .addEventListener('click', selecionarPikachu);
 
@@ -396,6 +469,8 @@ function startGame() {
     
     obstaculo.addEventListener('animationiteration', () => {
         if (!isPlaying) return;
+        obstaculoDestruido = false;
+        obstaculo.style.visibility = 'visible';
         if (velocidadeObstaculo !== proximaVelocidade) {
             velocidadeObstaculo = proximaVelocidade;
             obstaculo.style.animationDuration = `${velocidadeObstaculo}s`;
@@ -436,6 +511,8 @@ function startGame() {
 
 
     function reiniciarObstaculo() {
+        obstaculoDestruido = false;
+        obstaculo.style.visibility = 'visible';
         // cria uma cópia nova e troca no lugar do cano antigo
         const novo = obstaculo.cloneNode(true);
         novo.style.animation = '';
@@ -553,7 +630,7 @@ function checarMoeda() {
 
         // sorteia o tipo do ataque e mostra a animação do boss
         tipoAtaque = Math.random() < 0.5 ? 'alto' : 'baixo';
-        boss.src = 'assets/animacaoAtaqueBoss.gif';
+        boss.src = 'assets/animacaoAtaqueBoss.png';
 
         timerBoss = setTimeout(lancarAtaque, 1000);
     }
@@ -700,6 +777,41 @@ function checarMoeda() {
             timerItem = setTimeout(lancarItem, pausaItem);
         }
     });
+    function atualizarBarraCooldown() {
+        let porcentagem = ((Date.now() - ultimoRaio) / cooldownRaio) * 100;
+        if (porcentagem > 100) porcentagem = 100;
+        barraCooldownFill.style.width = `${porcentagem}%`;
+    }
+
+    function usarRaio() {
+        if (!isPlaying || personagemAtual !== 'pikachu') return;
+        if (Date.now() - ultimoRaio < cooldownRaio) return; // ainda em cooldown
+
+        const alvo = bossAtivo ? boss : obstaculo;
+
+        if (bossAtivo && bossMorrendo) return;
+        if (!bossAtivo) {
+            if (obstaculoDestruido) return;
+            // cano fora da tela: não gasta o cooldown
+            if (alvo.offsetLeft <= 0 || alvo.offsetLeft >= gameBoard.offsetWidth) return;
+        }
+
+        ultimoRaio = Date.now();
+
+        // centraliza o raio no alvo (45 = metade da largura do raio no CSS)
+        raio.style.left = `${alvo.offsetLeft + alvo.offsetWidth / 2 - 45}px`;
+        raio.style.display = 'block';
+        setTimeout(() => {
+            raio.style.display = 'none';
+        }, 400);
+
+        if (bossAtivo) {
+            danoBoss(); // tira 1 de vida do boss
+        } else {
+            obstaculo.style.visibility = 'hidden';
+            obstaculoDestruido = true;
+        }
+    }
 
     // Sorteia nova altura toda vez que a moeda reaparece na direita
     moeda.addEventListener('animationiteration', sortearMoeda);

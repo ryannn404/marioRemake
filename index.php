@@ -65,6 +65,11 @@
             <div class="item-boss" id="item-boss"></div>
             <span class="boss-vida" id="boss-vida"></span>
 
+            <div class="barra-cooldown" id="barra-cooldown">
+            <div class="barra-cooldown-fill" id="barra-cooldown-fill"></div>
+            </div>
+            <img src="assets/raioSkillPikachu.png" class="raio-skill" id="raio-skill" alt="Raio">
+
 
             <span class="jump-tip" id="jump-tip">Pressione ESPAÇO ou clique para pular</span>
         </main>
